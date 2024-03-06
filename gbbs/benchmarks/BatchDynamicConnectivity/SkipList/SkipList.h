@@ -17,12 +17,12 @@ struct SkipList {
         size_t lowest_needs_update = 0;
 
         using pointers_type = std::pair<SkipListElement*, SkipListElement*>;
-        using height_array_type = parlay::sequence<pointers_type>;
+        using height_array = parlay::sequence<pointers_type>;
         using edge_type = std::pair<uintE, uintE>;
 
         using values_for_one_side_per_level = parlay::sequence<edge_type>;
-        using values_for_one_level = parlay::sequence<values_one_side>;//length of sequence is 2, for one node has 2 sides 
-        using values_array = parlay::sequence<values_one_level>;//values for the entire element
+        using values_for_one_level = parlay::sequence<values_for_one_side_per_level>;//length of sequence is 2, for one node has 2 sides 
+        using values_array = parlay::sequence<values_for_one_level>;//values for the entire element
 
         height_array elements;
         values_array values;
@@ -100,7 +100,7 @@ struct SkipList {
     };
 
     size_t n;
-    auto const arbitrary_but_fixed_seed=4;
+    const int arbitrary_but_fixed_seed=4;
     parlay::random rng = parlay::random(arbitrary_but_fixed_seed);
 
     SkipList(): n(0) {}
@@ -113,7 +113,7 @@ struct SkipList {
             std::pair<uintE, uintE> id = std::make_pair(UINT_E_MAX, UINT_E_MAX),
             double pb = 2, int num_dup = 2, size_t m = 10) {
 
-        auto const rand_val = rng[index]% UINT_E_MAX;
+        auto rand_val = rng[index]% UINT_E_MAX;
 
         size_t cur_height = 1;
         while (rand_val & 1) {
@@ -125,6 +125,7 @@ struct SkipList {
         //std::cout << "initializing node" << std::endl;
 
         auto node = SkipListElement(height, left, right, vals, twin, is_vertex, id);
+        
         return node;
     }
 
