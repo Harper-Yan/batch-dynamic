@@ -16,12 +16,13 @@ struct SkipList {
         size_t height;
         size_t lowest_needs_update = 0;
 
-        using pointers = std::pair<SkipListElement*, SkipListElement*>;
-        using height_array = sequence<pointers>;
+        using pointers_type = std::pair<SkipListElement*, SkipListElement*>;
+        using height_array_type = parlay::sequence<pointers_type>;
         using edge_type = std::pair<uintE, uintE>;
-        using values_one_side = sequence<edge_type>;
-        using values_one_level = sequence<values_one_side>;//length of sequence is 2, for one node has 2 sides 
-        using values_array = sequence<values_one_level>;//values for the entire element
+
+        using values_for_one_side_per_level = parlay::sequence<edge_type>;
+        using values_for_one_level = parlay::sequence<values_one_side>;//length of sequence is 2, for one node has 2 sides 
+        using values_array = parlay::sequence<values_one_level>;//values for the entire element
 
         height_array elements;
         values_array values;
@@ -99,8 +100,8 @@ struct SkipList {
     };
 
     size_t n;
-    //parlay::random rng = parlay::random(time(0));
-    parlay::random rng = parlay::random(4);//variable-arbitary seed 
+    auto const arbitrary_but_fixed_seed=4;
+    parlay::random rng = parlay::random(arbitrary_but_fixed_seed);
 
     SkipList(): n(0) {}
 
@@ -111,10 +112,8 @@ struct SkipList {
             SkipListElement* twin = nullptr, bool is_vertex = false,
             std::pair<uintE, uintE> id = std::make_pair(UINT_E_MAX, UINT_E_MAX),
             double pb = 2, int num_dup = 2, size_t m = 10) {
-        //rng = rng.fork(0);
-        //rng = rng.next();
-        auto rand_val = rng[index]% UINT_E_MAX;
-        //rng = rng.next();
+
+        auto const rand_val = rng[index]% UINT_E_MAX;
 
         size_t cur_height = 1;
         while (rand_val & 1) {
@@ -458,7 +457,7 @@ struct SkipList {
             return xor_sums;
     }
 
-    // Get the sum of the entire sequence //Related to Connectivity
+    // Get the sum of the entire sequence 
     sequence<sequence<std::pair<uintE, uintE>>> get_sum(SkipListElement* this_element) {
             SkipListElement* root = find_representative(this_element);
             size_t level = root->height-1;
@@ -520,8 +519,9 @@ sequence<sequence<std::pair<uintE, uintE>>> default_values(uintE a, uintE b) {
 inline void RunSkipList(uintE n) {
     
     std::cout << "Creating skip list" << std::endl;
-    auto skip_list = SkipList(6);
-    sequence<SkipList::SkipListElement> skip_list_elements = sequence<SkipList::SkipListElement>(6);
+    auto const skiplist_length=6;
+    auto skip_list = SkipList(skiplist_length);
+    sequence<SkipList::SkipListElement> skip_list_elements = sequence<SkipList::SkipListElement>(skiplist_length);
 
     std::cout << "creating nodes" << std::endl;
     auto curr_node = skip_list.create_node(2, nullptr, nullptr, default_values(2, 2));
@@ -550,12 +550,12 @@ inline void RunSkipList(uintE n) {
     std::cout << "printing answers" << std::endl;
     
     for (int i = 0; i < 6; ++i) {
-    std::cout << "node " << i + 1 << " height: " << skip_list_elements[i].height << std::endl;}
-
+        std::cout << "node " << i + 1 << " height: " << skip_list_elements[i].height << std::endl;}
+    
     for (int i = 0; i < 6; ++i) {
-    std::cout << "node " << i + 1 << " value: " << skip_list_elements[i].values[0][0][0].first << ", " <<
-    skip_list_elements[i].values[0][0][0].second << std::endl;}
-/*
+        std::cout << "node " << i + 1 << " value: " << skip_list_elements[i].values[0][0][0].first << ", " <<
+        skip_list_elements[i].values[0][0][0].second << std::endl;}
+
 
     if (skip_list_elements[1].elements[0].first != nullptr)
         std::cout << "node 2 left: " <<
@@ -581,7 +581,7 @@ inline void RunSkipList(uintE n) {
         std::cout << "node 4 right: " <<
             skip_list_elements[3].elements[0].second -> values[0][0][0].first <<
             skip_list_elements[3].elements[0].second -> values[0][0][0].second << std::endl;
-*/ 
+
 
     for (size_t i = 0; i < 6; ++i) {
         auto node_height = skip_list_elements[i].height - 1;
@@ -602,24 +602,21 @@ inline void RunSkipList(uintE n) {
         }
     }
 
+    for (size_t i = 0; i < skip_list_elements.size(); ++i) {
+        auto left_parent = skip_list.find_left_parent(0, &skip_list_elements[i]);
+        auto right_parent = skip_list.find_right_parent(0, &skip_list_elements[i]);
 
+        if (left_parent != nullptr)
+            std::cout << "node " << i + 1 << " left parent: " <<
+                left_parent->values[0][0][0].first <<
+                left_parent->values[0][0][0].second << std::endl;
 
+        if (right_parent != nullptr)
+            std::cout << "node " << i + 1 << " right parent: " <<
+                right_parent->values[0][0][0].first <<
+                right_parent->values[0][0][0].second << std::endl;
+    }
 
-for (size_t i = 0; i < skip_list_elements.size(); ++i) {
-    auto left_parent = skip_list.find_left_parent(0, &skip_list_elements[i]);
-    auto right_parent = skip_list.find_right_parent(0, &skip_list_elements[i]);
-
-    if (left_parent != nullptr)
-        std::cout << "node " << i + 1 << " left parent: " <<
-            left_parent->values[0][0][0].first <<
-            left_parent->values[0][0][0].second << std::endl;
-
-    if (right_parent != nullptr)
-        std::cout << "node " << i + 1 << " right parent: " <<
-            right_parent->values[0][0][0].first <<
-            right_parent->values[0][0][0].second << std::endl;
-}
-          
     std::cout << "total sum 2, 3: " <<
         skip_list.get_subsequence_sum(&skip_list_elements[1],
             &skip_list_elements[2])[0][0].first << ", "
@@ -682,8 +679,6 @@ for (size_t i = 0; i < skip_list_elements.size(); ++i) {
         << skip_list.get_sum(&skip_list_elements[5])[0][0].first << ", "
         << skip_list.get_sum(&skip_list_elements[5])[0][0].second
         << std::endl;
-
-
 
     std::cout << "splitting some nodes" << std::endl;
     sequence<SkipList::SkipListElement*> splits
