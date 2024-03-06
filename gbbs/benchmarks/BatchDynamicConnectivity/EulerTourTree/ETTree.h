@@ -29,7 +29,7 @@ struct ETTree {
    sequence<SkipList::SkipListElement> vertices;
    int copies;
    size_t m;
-   parlay::random cutset_rng = parlay::random(time(0));
+   parlay::random cutset_rng = parlay::random(42);//variable-arbitary seed 
    double pb;
 
    ETTree() {}
@@ -547,8 +547,8 @@ struct ETTree {
     }
 
     template <class KY, class VL, class HH>
-    sequence<sequence<std::pair<uintE, uintE>>> get_subtree_sum(uintE v, uintE parent,
-            pbbslib::sparse_table<KY, VL, HH> edge_index_table) {
+    sequence<sequence<std::pair<uintE, uintE>>> get_subtree_sum(const uintE& v, const uintE& parent,
+            const pbbslib::sparse_table<KY, VL, HH>& edge_index_table) {
         auto index_uv = edge_index_table.find(std::make_pair(parent, v), UINT_E_MAX); //, UINT_E_MAX);
         if (index_uv == UINT_E_MAX)
             std::cout << "This is an error in edge_index_table in get_subtree_sum" << std::endl;
@@ -591,6 +591,23 @@ struct ETTree {
         return edge_sum;
         //return edge_sum.first ^ edge_sum.second;
     }
+    
+    template <class KY, class VL, class HH>
+    sequence<sequence<sequence<std::pair<uintE, uintE>>>> batch_sub_tree_sum(const sequence<std::pair<uintE,uintE>>& v_p,
+            const pbbslib::sparse_table<KY, VL, HH>& edge_index_table)
+    {
+
+        size_t num_queries = v_p.size();
+        sequence<sequence<sequence<std::pair<uintE, uintE>>>> subtree_sums(num_queries);
+
+        parallel_for(0, num_queries, [&v_p,&edge_index_table,&subtree_sums,this](size_t i){
+            auto const [u, v] = v_p[i]; 
+            subtree_sums[i]=get_subtree_sum(u,v, edge_index_table);
+            });
+            
+        return subtree_sums;
+    }
+    
 
     bool is_connected(uintE u, uintE v) {
             auto uu = vertices[u];
@@ -663,15 +680,28 @@ void RunETTree(double pb, int copies, size_t m) {
         std::cout << "Connected 5, 9: " << tree.is_connected(5, 9) << std::endl;
 
         std::cout << "Getting subsequence sums: " << std::endl;
+        
         auto a = tree.get_subtree_sum(2, 3, edge_index_table);
         auto b = tree.get_subtree_sum(6, 5, edge_index_table);
         auto c = tree.get_tree_sum(2);
         auto d = tree.get_tree_sum(5);
-
+        
         std::cout << "v: 2, parent: 3: " << a[0][0].first << ", " << a[0][0].second << std::endl;
         std::cout << "v: 6, parent: 5: " << b[0][0].first << ", " << b[0][0].second << std::endl;
         std::cout << "v: 2, parent: 2: " << c[0][0].first << ", " << c[0][0].second << std::endl;
         std::cout << "v: 5, parent: 5: " << d[0][0].first << ", " << d[0][0].second << std::endl;
+        
+        sequence<std::pair<uintE, uintE>> subtree_queries = sequence<std::pair<uintE, uintE>>(2);
+        subtree_queries[0]=std::make_pair(2,3);
+        subtree_queries[1]=std::make_pair(6,5);
+        
+        std::cout << "Getting batch computed subsequence sums: " << std::endl;
+        
+        //b_r stands for batch_query_results
+        auto b_r=tree.batch_sub_tree_sum(subtree_queries, edge_index_table);
+        std::cout << "v: 2, parent: 3: " << b_r[0][0][0].first << ", " << b_r[0][0][0].second << std::endl;
+        std::cout << "v: 6, parent: 5: " << b_r[1][0][0].first << ", " << b_r[1][0][0].second << std::endl;
+
 
         sequence<std::pair<uintE, uintE>> cuts = sequence<std::pair<uintE, uintE>>(4);
         cuts[0] = std::make_pair(0, 8);
@@ -697,6 +727,17 @@ void RunETTree(double pb, int copies, size_t m) {
 
         std::cout << "v: 4, parent: 3: " << a[0][0].first << ", " << a[0][0].second << std::endl;
         std::cout << "v: 6, parent: 5: " << b[0][0].first << ", " << b[0][0].second << std::endl;
+        
+        sequence<std::pair<uintE, uintE>> subtree_queries_2 = sequence<std::pair<uintE, uintE>>(2);
+        subtree_queries_2[0]=std::make_pair(4,3);
+        subtree_queries_2[1]=std::make_pair(6,5);
+        
+        std::cout << "Getting batch computed subsequence sums: " << std::endl;
+        
+        //b_r stands for batch_query_results
+        auto b_r_2=tree.batch_sub_tree_sum(subtree_queries_2, edge_index_table);
+        std::cout << "v: 4, parent: 3: " << b_r_2[0][0][0].first << ", " << b_r_2[0][0][0].second << std::endl;
+        std::cout << "v: 6, parent: 5: " << b_r_2[1][0][0].first << ", " << b_r_2[1][0][0].second << std::endl;
 }
 
 }  // namespace gbbs
