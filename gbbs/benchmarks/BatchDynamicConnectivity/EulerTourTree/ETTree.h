@@ -547,8 +547,8 @@ struct ETTree {
     }
 
     template <class KY, class VL, class HH>
-    sequence<sequence<std::pair<uintE, uintE>>> get_subtree_sum(uintE v, uintE parent,
-            pbbslib::sparse_table<KY, VL, HH> edge_index_table) {
+    sequence<sequence<std::pair<uintE, uintE>>> get_subtree_sum(const uintE& v, const uintE& parent,
+            const pbbslib::sparse_table<KY, VL, HH>& edge_index_table) {
         auto index_uv = edge_index_table.find(std::make_pair(parent, v), UINT_E_MAX); //, UINT_E_MAX);
         if (index_uv == UINT_E_MAX)
             std::cout << "This is an error in edge_index_table in get_subtree_sum" << std::endl;
@@ -593,33 +593,18 @@ struct ETTree {
     }
     
     template <class KY, class VL, class HH>
-    sequence<sequence<sequence<std::pair<uintE, uintE>>>> batch_sub_tree_sum(sequence<std::pair<uintE,uintE>> v_p,
-            pbbslib::sparse_table<KY, VL, HH> edge_index_table)
+    sequence<sequence<sequence<std::pair<uintE, uintE>>>> batch_sub_tree_sum(const sequence<std::pair<uintE,uintE>>& v_p,
+            const pbbslib::sparse_table<KY, VL, HH>& edge_index_table)
     {
 
-
         size_t num_queries = v_p.size();
-  
         sequence<sequence<sequence<std::pair<uintE, uintE>>>> subtree_sums(num_queries);
 
-        parallel_for(0, num_queries, [&](size_t i){
-
-            uintE u = v_p[i].first; 
-            uintE v = v_p[i].second; 
-            auto index_uv = edge_index_table.find(std::make_pair(u, v), UINT_E_MAX);
-            if (index_uv == UINT_E_MAX)
-            std::cout << "This is an error in edge_index_table in get_subtree_sum" << std::endl;
-
-            auto edge = &edge_table[index_uv];
-            auto twin = edge->twin;
-            
-            auto result =  skip_list.get_subsequence_sum(edge, twin);
-            
-            subtree_sums[i]=result;
-            
+        parallel_for(0, num_queries, [&v_p,&edge_index_table,&subtree_sums,this](size_t i){
+            auto const [u, v] = v_p[i]; 
+            subtree_sums[i]=get_subtree_sum(u,v, edge_index_table);
             });
-
-
+            
         return subtree_sums;
     }
     
