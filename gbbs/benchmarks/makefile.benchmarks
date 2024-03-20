@@ -1,4 +1,4 @@
-INCLUDE_DIRS = -I$(ROOTDIR)gbbs/ -I$(ROOTDIR)gbbs/parlaylib/include/
+INCLUDE_DIRS = -I$(ROOTDIR)gbbs/ -I$(ROOTDIR)gbbs/parlaylib/include/ -I$(ROOTDIR)catch2/
 
 .DEFAULT_GOAL := all
 
