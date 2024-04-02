@@ -12,18 +12,17 @@ namespace gbbs {
 
 struct SkipList {
 
+    using edge_type = std::pair<uintE, uintE>;
+    using values_for_one_side_per_level = parlay::sequence<edge_type>;
+    using values_for_one_level = parlay::sequence<values_for_one_side_per_level>;//length of sequence is 2, for one node has 2 sides 
+    using values_array = parlay::sequence<values_for_one_level>;//values for the entire element
+
     struct SkipListElement {
         size_t height;
         size_t lowest_needs_update = 0;
 
         using pointers_type = std::pair<SkipListElement*, SkipListElement*>;
         using height_array = parlay::sequence<pointers_type>;
-        using edge_type = std::pair<uintE, uintE>;
-
-        using values_for_one_side_per_level = parlay::sequence<edge_type>;
-        using values_for_one_level = parlay::sequence<values_for_one_side_per_level>;//length of sequence is 2, for one node has 2 sides 
-        using values_array = parlay::sequence<values_for_one_level>;//values for the entire element
-
 
         height_array elements;
         values_array values;
@@ -64,6 +63,8 @@ struct SkipList {
                 parallel_for(1, _h, [&](size_t i){
                     values[i] = sequence<sequence<edge_type>>(num_duplicates,
                             sequence<edge_type>(ceil(log(m)/log(pb)), std::make_pair(0, 0)));
+                    elements[i].first=nullptr;
+                    elements[i].second=nullptr;
                 });
         }
 
@@ -102,15 +103,9 @@ struct SkipList {
 
     size_t n;
 
-
-
-
     const int arbitrary_but_fixed_seed=4;
 
-
     parlay::random rng = parlay::random(arbitrary_but_fixed_seed);
-
-
 
     SkipList(): n(0) {}
 
@@ -121,11 +116,6 @@ struct SkipList {
             SkipListElement* twin = nullptr, bool is_vertex = false,
             std::pair<uintE, uintE> id = std::make_pair(UINT_E_MAX, UINT_E_MAX),
             double pb = 2, int num_dup = 2, size_t m = 10) {
-
-
-
-
-
 
         auto rand_val = rng[index]% UINT_E_MAX;
         
@@ -472,11 +462,7 @@ struct SkipList {
             return xor_sums;
     }
 
-
-
     // Get the sum of the entire sequence 
-
-
     sequence<sequence<std::pair<uintE, uintE>>> get_sum(SkipListElement* this_element) {
             SkipListElement* root = find_representative(this_element);
             size_t level = root->height-1;
@@ -525,15 +511,18 @@ struct SkipList {
     }
 };
 
-bool operator == ( SkipList const& list1, SkipList const& list2 )
-{
-    return list1.n == list2.n;
+bool operator == (SkipList::edge_type const& lhs, SkipList::edge_type const& rhs) {
+    return lhs.first == rhs.first && lhs.second == rhs.second;
 }
 
-std::ostream & operator << ( std::ostream & s, SkipList const& skiplist )
-{
-    s << "SkipList( n = " << skiplist.n << " )";
-    return s;
+bool operator == ( SkipList::values_array const& lhs, SkipList::values_array const& rhs) {
+    if (lhs.size() != rhs.size())
+        return false;
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        if (!(lhs[i] == rhs[i]))
+            return false;
+    }
+    return true;
 }
 
 sequence<sequence<std::pair<uintE, uintE>>> default_values(uintE a, uintE b) {
@@ -543,12 +532,35 @@ sequence<sequence<std::pair<uintE, uintE>>> default_values(uintE a, uintE b) {
         return values_seq;
 }
 
+sequence<sequence<sequence<std::pair<uintE, uintE>>>> default_values_array(int level, uintE a, uintE b) {
+    sequence<sequence<sequence<std::pair<uintE, uintE>>>> result(level);
+    for (int i = 0; i < level; i++) {
+        if (i == 0) {
+            result[i] = sequence<sequence<std::pair<uintE, uintE>>>(2, sequence<std::pair<uintE, uintE>>(
+                ceil(log(10) / log(2)),
+                std::make_pair(a, b)));
+        } else {
+            result[i] = sequence<sequence<std::pair<uintE, uintE>>>(2, sequence<std::pair<uintE, uintE>>(
+                ceil(log(10) / log(2)),
+                std::make_pair(0, 0)));
+        }
+    }
+    return result;
+}
 
-
+SkipList::values_for_one_level XOR_function(SkipList::values_for_one_level const & v1, SkipList::values_for_one_level const & v2){
+    SkipList::values_for_one_level result = v1;
+    parallel_for(0, result.size(), [&](size_t ii) {
+        parallel_for(0, result[ii].size(), [&](size_t ij) {
+            result[ii][ij].first ^= v2[ii][ij].first;
+            result[ii][ij].second ^= v2[ii][ij].second;
+        });
+    });
+    return result;
+}
 
 inline void RunSkipList(uintE n) {
-    
-    std::cout << "Creating skip list" << std::endl;
+    /*std::cout << "Creating skip list" << std::endl;
 
     auto const skiplist_length=6;
     auto skip_list = SkipList(skiplist_length);
@@ -800,7 +812,46 @@ inline void RunSkipList(uintE n) {
     std::cout << "total sum subtree 2: " << skip_list.get_sum(&skip_list_elements[3])[0][0].first << ", "
         << skip_list.get_sum(&skip_list_elements[4])[0][0].first
         << std::endl;
-
+    */
 }
 
 }  // namespace gbbs
+
+std::ostream & operator << ( std::ostream & s, gbbs::SkipList::values_array const& values_arr ){
+    s<<"Start for this values_arr"<<std::endl;
+    for(int i=values_arr.size()-1;i>=0;i--){
+        for(int j=0;j<values_arr[i].size();j++){
+                for(int k=0;k<values_arr[i][j].size();k++){
+                    s << "( "<<values_arr[i][j][k].first<< " "<<values_arr[i][j][k].second<<" )";
+                }
+                s<<" , ";
+        }
+        s<<std::endl;
+    }
+    s<<"End for this values_arr"<<std::endl;
+    return s;
+}
+
+std::ostream & operator << ( std::ostream & s, parlay::sequence<gbbs::SkipList::SkipListElement> const& skip_list_elements){
+    s<<" This skip_list is now like : "<<std::endl;
+    int max_height=0;
+    for (int i=0;i<skip_list_elements.size();i++){if(skip_list_elements[i].height>max_height){max_height=skip_list_elements[i].height;}}
+    
+    for(int i=max_height; i>0; i--){
+        for (int j=0; j<skip_list_elements.size(); j++)
+        {
+            if(skip_list_elements[j].height >= i)
+            {
+                s << " " << j << " ";
+                if(skip_list_elements[j].elements[i-1].second!=nullptr){s<< "->";}
+                else{s<< "   ";}
+            }
+            else{
+                s << "     ";
+            }
+        }
+        s<<std::endl;
+    }
+    return s;
+}
+
