@@ -525,6 +525,17 @@ struct SkipList {
     }
 };
 
+bool operator == ( SkipList const& list1, SkipList const& list2 )
+{
+    return list1.n == list2.n;
+}
+
+std::ostream & operator << ( std::ostream & s, SkipList const& skiplist )
+{
+    s << "SkipList( n = " << skiplist.n << " )";
+    return s;
+}
+
 sequence<sequence<std::pair<uintE, uintE>>> default_values(uintE a, uintE b) {
         auto values_seq = sequence<sequence<std::pair<uintE, uintE>>>(2, sequence<std::pair<uintE, uintE>>(
                     ceil(log(10)/log(2)),

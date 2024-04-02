@@ -1,7 +1,8 @@
-INCLUDE_DIRS = -I$(ROOTDIR)gbbs/ -I$(ROOTDIR)gbbs/parlaylib/include/
+INCLUDE_DIRS = -I$(ROOTDIR)gbbs/ -I$(ROOTDIR)gbbs/parlaylib/include/ -I$(ROOTDIR)catch2/
 
 .DEFAULT_GOAL := all
 
+test: $(all) $(TEST)
 all: $(ALL)
 
 LIGRA_OBJS = $(wildcard $(ROOTDIR)gbbs/bin/gbbs/*.a)
@@ -32,4 +33,4 @@ gbbs_encodings :
 .PHONY : clean
 
 clean :
-	rm -f *.o $(ALL) $(ALL_OBJS) $(ALL_OBJS_CLEAN)
+	rm -f *.o $(ALL) $(TEST) $(ALL_OBJS) $(ALL_OBJS_CLEAN)
